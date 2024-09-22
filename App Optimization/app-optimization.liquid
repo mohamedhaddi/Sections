@@ -6,10 +6,12 @@
   assign block_key = 'block_' | append: page 
   assign scroll_key = 'scroll_' | append: page 
   assign interaction_key = 'interaction_' | append: page
+  assign timeout_key = 'timeout_' | append: page
 
   assign arr_block = '' | split: ''
   assign arr_scroll = '' | split: ''
   assign arr_interaction = '' | split: '' 
+  assign arr_timeout = '' | split: '' 
 
   for block in section.blocks
     assign url = block.settings.url | replace: '/', '\/'
@@ -25,9 +27,13 @@
     if block.settings[interaction_key] == true and content_for_header contains url
       assign arr_interaction = block | concat: arr_interaction
     endif
+
+    if block.settings[timeout_key] == true and content_for_header contains url
+      assign arr_timeout = block | concat: arr_timeout
+    endif
   endfor
 
-  assign settings_data = arr_block | concat: arr_scroll | concat: arr_interaction | uniq | map: 'settings'
+  assign settings_data = arr_block | concat: arr_scroll | concat: arr_interaction | concat: arr_timeout | uniq | map: 'settings'
 -%}
 
 {%- if settings_data.size != 0 -%}
@@ -45,7 +51,9 @@
       function loadTypeFromSettings(settings) {
         if (settings['settings_' + page]) settings.loadType = 'settings';
         else if (settings['scroll_' + page]) settings.loadType = 'scroll';
-        else settings.loadType = 'interaction';
+        else if (settings['interaction_' + page]) settings.loadType = 'interaction';
+        else if (settings['timeout_' + page]) settings.loadType = 'timeout';
+        else settings.loadType = 'default';
         return settings;
       }
 
@@ -71,9 +79,12 @@
         var data = {
           url: settings.url,
           loadType: settings.loadType,
-          interactionEvents: settings.interactionEvents
+          interactionEvents: settings.interactionEvents,
+          settings: {
+            timeout_time: settings.timeout_time
+          }
         }
-        if (debug) console.log('App Optimiztion Data:', data);
+        if (debug) console.log('App Optimization Data:', data);
         return data;
       }
 
@@ -107,6 +118,7 @@
                   loadRule.originalUrl = src;
                   if (loadRule.loadType === 'interaction') window.addEventListener('load', interactionLoad(loadRule), false);
                   if (loadRule.loadType === 'scroll') window.addEventListener('load', scrollLoad(loadRule), false);
+                  if (loadRule.loadType === 'timeout') window.addEventListener('load', timeoutLoad(loadRule), false);
                 }
                 originalSetAttribute('src', src);
                 return true;
@@ -136,6 +148,12 @@
           loadScript(src);
           window.removeEventListener('scroll', eventFn, eventOptions);
         }
+      }
+
+      function timeoutLoad(loadRule) {
+        setTimeout(function() {
+          loadScript(loadRule.originalUrl);
+        }, loadRule.settings.timeout_time * 1000);
       }
 
       function getLoadRule(logic, src) {
@@ -380,6 +398,7 @@
             assign block_key = 'block_' | append: page
             assign scroll_key = 'scroll_' | append: page
             assign interaction_key = 'interaction_' | append: page
+            assign timeout_key = 'timeout_' | append: page
 
             assign url_clean = url | remove: '"' | remove: '[' | remove: ']' | replace: '\/', '/' | replace: '\u0026', '&' | remove: 'https://' | remove: '//' | strip 
             assign url_display = url_clean | split: '?' | first
@@ -393,6 +412,8 @@
                   assign load = 'Scroll'
                 elsif block.settings[interaction_key] == true
                   assign load = 'Interaction'
+                elsif block.settings[timeout_key] == true
+                  assign load = 'Timeout'
                 endif
               endif
             endfor
@@ -760,6 +781,78 @@
               }
             ],
             "default": "click"
+          },
+          {
+            "type": "header",
+            "content": "Load script after some time"
+          },
+          {
+            "type": "paragraph",
+            "content": "On selected pages, the app will start to load after the specified time."
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_index",
+            "label": "Index"
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_product",
+            "label": "Product"
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_collection",
+            "label": "Collection"
+          },
+           {
+            "type": "checkbox",
+            "id": "timeout_page",
+            "label": "Page"
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_blog",
+            "label": "Blog"
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_article",
+            "label": "Article"
+          },
+          {
+            "type": "checkbox",
+            "id": "timeout_cart",
+            "label": "Cart"
+          },  
+          {
+            "type": "checkbox",
+            "id": "timeout_search",
+            "label": "Search"
+          },        
+          {
+            "type": "checkbox",
+            "id": "timeout_customers",
+            "label": "Customers"
+          }, 
+          {
+            "type": "checkbox",
+            "id": "timeout_gift_card",
+            "label": "Gift card"
+          },
+          {
+            "type": "header",
+            "content": "Time delay"
+          },
+          {
+            "type": "range",
+            "id": "timeout_time",
+            "min": 1,
+            "max": 60,
+            "step": 1,
+            "unit": "sec",
+            "label": "The time delay in seconds",
+            "default": 5
           }
         ]
       }
